@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Translation Editor - Translate AI</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="editor-style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="editor-container">
+        <!-- Header -->
+        <header class="editor-header">
+            <div class="header-content">
+                <h1>🎬 Translation Editor</h1>
+                <div class="header-actions">
+                    <button class="btn btn-secondary" id="backBtn">← Back to Upload</button>
+                    <button class="btn btn-primary" id="generateVideoBtn">Generate Final Video</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="editor-main">
+            <!-- Video Preview Section -->
+            <section class="video-preview-section">
+                <div class="video-preview-card">
+                    <h2>📹 Video Preview</h2>
+                    <div class="video-container">
+                        <video id="previewVideo" controls>
+                            <source src="" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                        <div class="video-info">
+                            <div class="video-details">
+                                <span class="label">Original File:</span>
+                                <span class="value" id="originalFileName">-</span>
+                            </div>
+                            <div class="video-details">
+                                <span class="label">Duration:</span>
+                                <span class="value" id="videoDuration">-</span>
+                            </div>
+                            <div class="video-details">
+                                <span class="label">Quality:</span>
+                                <span class="value" id="videoQuality">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Translation Panels -->
+            <section class="translation-panels">
+                <!-- Text Translation Panel -->
+                <div class="translation-panel">
+                    <div class="panel-header">
+                        <h2>📝 Text Translation</h2>
+                        <div class="panel-actions">
+                            <button class="btn btn-sm btn-secondary" id="autoTranslateBtn">Auto Translate All</button>
+                            <button class="btn btn-sm btn-primary" id="saveTextBtn">Save Changes</button>
+                        </div>
+                    </div>
+                    
+                    <div class="text-translation-content">
+                        <div class="translation-list" id="textTranslationList">
+                            <!-- Text translations will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Audio Translation Panel -->
+                <div class="translation-panel">
+                    <div class="panel-header">
+                        <h2>🎤 Audio Translation</h2>
+                        <div class="panel-actions">
+                            <button class="btn btn-sm btn-secondary" id="regenerateAudioBtn">Regenerate Audio</button>
+                            <button class="btn btn-sm btn-primary" id="saveAudioBtn">Save Changes</button>
+                        </div>
+                    </div>
+                    
+                    <div class="audio-translation-content">
+                        <div class="audio-waveform-container">
+                            <div class="waveform-header">
+                                <h3>Audio Waveform</h3>
+                                <div class="audio-controls">
+                                    <button class="btn btn-sm" id="playPauseBtn">▶️ Play</button>
+                                    <button class="btn btn-sm" id="stopBtn">⏹️ Stop</button>
+                                    <span class="time-display" id="timeDisplay">00:00 / 00:00</span>
+                                </div>
+                            </div>
+                            <div class="waveform" id="waveform">
+                                <!-- Waveform visualization will be rendered here -->
+                            </div>
+                        </div>
+                        
+                        <div class="audio-translation-text">
+                            <div class="translation-item">
+                                <div class="translation-label">Hindi Transcription:</div>
+                                <div class="translation-content hindi-text" id="hindiTranscription">
+                                    Loading transcription...
+                                </div>
+                            </div>
+                            <div class="translation-item">
+                                <div class="translation-label">Marathi Translation:</div>
+                                <textarea class="translation-content marathi-text" id="marathiTranslation" placeholder="Enter Marathi translation..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Audio Separation Panel -->
+            <section class="audio-separation-panel">
+                <div class="separation-card">
+                    <h2>🎵 Audio Separation</h2>
+                    <div class="separation-content">
+                        <div class="separation-info">
+                            <div class="separation-item">
+                                <div class="separation-label">Voice Track Quality:</div>
+                                <div class="quality-score" id="voiceQuality">-</div>
+                            </div>
+                            <div class="separation-item">
+                                <div class="separation-label">Background Music Quality:</div>
+                                <div class="quality-score" id="musicQuality">-</div>
+                            </div>
+                            <div class="separation-item">
+                                <div class="separation-label">Overall Separation Quality:</div>
+                                <div class="quality-score" id="overallQuality">-</div>
+                            </div>
+                        </div>
+                        
+                        <div class="separation-controls">
+                            <button class="btn btn-secondary" id="reseparateBtn">Re-separate Audio</button>
+                            <button class="btn btn-primary" id="previewSeparationBtn">Preview Separation</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Progress Overlay -->
+        <div class="progress-overlay" id="progressOverlay" style="display: none;">
+            <div class="progress-content">
+                <div class="progress-spinner"></div>
+                <div class="progress-text" id="progressText">Processing...</div>
+                <div class="progress-subtext" id="progressSubtext">Please wait while we process your request</div>
+            </div>
+        </div>
+
+        <!-- Notification Container -->
+        <div class="notification-container" id="notificationContainer"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="editor-script.js"></script>
+</body>
+</html>
