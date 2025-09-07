@@ -88,7 +88,7 @@ librosa==0.10.1
 soundfile==0.12.1
 scipy==1.15.3
 requests==2.32.5
-# Spleeter for AI audio separation (optional)
-spleeter==2.4.2
+# Note: spleeter removed due to httpx dependency conflicts
+# Using librosa for audio separation instead
 # JWT for authentication
 PyJWT==2.8.0

@@ -23,12 +23,12 @@ class AudioSeparator:
     Supports multiple separation methods including Spleeter, LALAL.AI, and custom models
     """
     
-    def __init__(self, method: str = "spleeter", logger: Optional[logging.Logger] = None):
+    def __init__(self, method: str = "librosa", logger: Optional[logging.Logger] = None):
         """
         Initialize audio separator
         
         Args:
-            method: Separation method ('spleeter', 'lalalai', 'custom')
+            method: Separation method ('librosa', 'lalalai', 'custom')
             logger: Optional logger instance
         """
         self.method = method
@@ -55,8 +55,8 @@ class AudioSeparator:
     
     def _initialize_separator(self):
         """Initialize the selected separation method"""
-        if self.method == "spleeter":
-            self._initialize_spleeter()
+        if self.method == "librosa":
+            self._initialize_librosa()
         elif self.method == "lalalai":
             self._initialize_lalalai()
         elif self.method == "custom":
@@ -64,22 +64,15 @@ class AudioSeparator:
         else:
             raise ValueError(f"Unsupported separation method: {self.method}")
     
-    def _initialize_spleeter(self):
-        """Initialize Spleeter for audio separation"""
+    def _initialize_librosa(self):
+        """Initialize Librosa for audio separation"""
         try:
-            # Check if Spleeter is available
-            result = subprocess.run(['spleeter', '--help'], 
-                                  capture_output=True, text=True, timeout=10)
-            if result.returncode == 0:
-                self.logger.info("✅ Spleeter initialized successfully")
-                self.spleeter_available = True
-            else:
-                self.logger.warning("⚠️ Spleeter not available, falling back to custom method")
-                self.spleeter_available = False
-                self.method = "custom"
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            self.logger.warning("⚠️ Spleeter not found, using custom separation method")
-            self.spleeter_available = False
+            import librosa
+            self.librosa_available = True
+            self.logger.info("✅ Librosa initialized successfully")
+        except ImportError:
+            self.logger.warning("⚠️ Librosa not available, falling back to custom method")
+            self.librosa_available = False
             self.method = "custom"
     
     def _initialize_lalalai(self):
@@ -128,8 +121,8 @@ class AudioSeparator:
         self.logger.info(f"📁 Output directory: {output_dir}")
         
         try:
-            if self.method == "spleeter" and self.spleeter_available:
-                result = self._separate_with_spleeter(audio_path, output_dir)
+            if self.method == "librosa" and self.librosa_available:
+                result = self._separate_with_librosa(audio_path, output_dir)
             elif self.method == "lalalai":
                 result = self._separate_with_lalalai(audio_path, output_dir)
             else:
@@ -153,52 +146,61 @@ class AudioSeparator:
             self.logger.error(f"❌ Audio separation failed: {e}")
             raise e
     
-    def _separate_with_spleeter(self, audio_path: str, output_dir: str) -> Dict[str, str]:
-        """Separate audio using Spleeter"""
+    def _separate_with_librosa(self, audio_path: str, output_dir: str) -> Dict[str, str]:
+        """Separate audio using Librosa (basic frequency-based separation)"""
         try:
-            # Use Spleeter's 2stems model (vocals + accompaniment)
-            cmd = [
-                'spleeter', 'separate',
-                '-p', 'spleeter:2stems-16kHz',
-                '-o', output_dir,
-                audio_path
-            ]
+            import librosa
+            import soundfile as sf
             
-            self.logger.info("🔧 Using Spleeter for audio separation...")
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            self.logger.info("🔧 Using Librosa for audio separation...")
             
-            if result.returncode != 0:
-                raise Exception(f"Spleeter failed: {result.stderr}")
+            # Load audio
+            y, sr = librosa.load(audio_path, sr=None)
             
-            # Spleeter outputs files with specific naming convention
+            # Basic frequency-based separation
+            # This is a simplified approach - in production, you'd use more sophisticated methods
+            
+            # Separate into frequency bands
+            # Low frequencies (typically music/bass)
+            y_low = librosa.effects.preemphasis(y, coef=0.97)
+            
+            # High frequencies (typically voice)
+            y_high = y - y_low
+            
+            # Apply some filtering to improve separation
+            from scipy import signal
+            
+            # Low-pass filter for music
+            b, a = signal.butter(4, 0.3, btype='low')
+            y_music = signal.filtfilt(b, a, y_low)
+            
+            # High-pass filter for voice
+            b, a = signal.butter(4, 0.1, btype='high')
+            y_voice = signal.filtfilt(b, a, y_high)
+            
+            # Normalize audio
+            y_music = librosa.util.normalize(y_music)
+            y_voice = librosa.util.normalize(y_voice)
+            
+            # Save separated audio
             audio_name = Path(audio_path).stem
-            voice_path = os.path.join(output_dir, audio_name, "vocals.wav")
-            music_path = os.path.join(output_dir, audio_name, "accompaniment.wav")
+            voice_file = os.path.join(output_dir, f"{audio_name}_voice.wav")
+            music_file = os.path.join(output_dir, f"{audio_name}_music.wav")
             
-            # Move files to expected locations
-            final_voice_path = os.path.join(output_dir, f"{audio_name}_voice.wav")
-            final_music_path = os.path.join(output_dir, f"{audio_name}_music.wav")
+            sf.write(voice_file, y_voice, sr)
+            sf.write(music_file, y_music, sr)
             
-            if os.path.exists(voice_path):
-                os.rename(voice_path, final_voice_path)
-            if os.path.exists(music_path):
-                os.rename(music_path, final_music_path)
-            
-            # Clean up Spleeter's output directory
-            spleeter_dir = os.path.join(output_dir, audio_name)
-            if os.path.exists(spleeter_dir):
-                import shutil
-                shutil.rmtree(spleeter_dir)
+            self.logger.info(f"✅ Librosa separation completed")
+            self.logger.info(f"🎤 Voice saved to: {voice_file}")
+            self.logger.info(f"🎵 Music saved to: {music_file}")
             
             return {
-                'voice': final_voice_path,
-                'music': final_music_path
+                'voice': voice_file,
+                'music': music_file
             }
-            
-        except subprocess.TimeoutExpired:
-            raise Exception("Spleeter separation timed out (>5 minutes)")
+                
         except Exception as e:
-            raise Exception(f"Spleeter separation failed: {e}")
+            raise Exception(f"Librosa separation failed: {e}")
     
     def _separate_with_lalalai(self, audio_path: str, output_dir: str) -> Dict[str, str]:
         """Separate audio using LALAL.AI API"""
